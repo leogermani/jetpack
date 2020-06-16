@@ -845,9 +845,11 @@ class Themes extends Module {
 	/**
 	 * Return Total number of objects.
 	 *
+	 * @param array $config Full sync configuration for this sync module.
+	 *
 	 * @return int total
 	 */
-	public function total() {
+	public function total( $config ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
 		return 1;
 	}
 

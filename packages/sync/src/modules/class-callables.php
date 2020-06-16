@@ -511,9 +511,11 @@ class Callables extends Module {
 	/**
 	 * Return Total number of objects.
 	 *
+	 * @param array $config Full Sync config.
+	 *
 	 * @return int total
 	 */
-	public function total() {
+	public function total( $config ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
 		return count( $this->get_callable_allowlist() );
 	}
 
