@@ -7,6 +7,9 @@
 
 namespace Automattic\Jetpack\Connection;
 
+require_once __DIR__ . '/mock/trait-options.php';
+require_once __DIR__ . '/mock/trait-hooks.php';
+
 use Automattic\Jetpack\Connection\Test\Mock\Hooks;
 use Automattic\Jetpack\Connection\Test\Mock\Options;
 use Automattic\Jetpack\Constants;
@@ -20,12 +23,16 @@ use PHPUnit\Framework\TestCase;
  */
 class ManagerTest extends TestCase {
 
+	use Options, Hooks;
+
 	/**
 	 * Temporary stack for `wp_redirect`.
 	 *
 	 * @var array
 	 */
 	protected $arguments_stack = array();
+
+	const DEFAULT_TEST_CAPS = array( 'default_test_caps' );
 
 	/**
 	 * Initialize the object before running the test method.
@@ -68,6 +75,9 @@ class ManagerTest extends TestCase {
 					}
 				);
 		$this->constants_apply_filters = $builder->build();
+
+		$this->build_mock_options();
+		$this->build_mock_actions();
 	}
 
 	/**
@@ -259,17 +269,114 @@ class ManagerTest extends TestCase {
 	}
 
 	/**
+	 * Unit test for the "Delete all tokens" functionality.
+	 *
+	 * @covers Automattic\Jetpack\Connection\Manager::delete_all_connection_tokens
+	 * @throws MockEnabledException PHPUnit wasn't able to enable mock functions.
+	 */
+	public function test_delete_all_connection_tokens() {
+		$this->update_option->enable();
+		$this->get_option->enable();
+		$this->apply_filters->enable();
+		$this->do_action->enable();
+
+		( new Plugin( 'plugin-slug-1' ) )->add( 'Plugin Name 1' );
+
+		( new Plugin( 'plugin-slug-2' ) )->add( 'Plugin Name 2' );
+
+		$stub = $this->createMock( Plugin::class );
+		$stub->method( 'is_only' )
+			->willReturn( false );
+		$manager = ( new Manager() )->set_plugin_instance( $stub );
+
+		$this->assertFalse( $manager->delete_all_connection_tokens() );
+	}
+
+	/**
+	 * Unit test for the "Disconnect from WP" functionality.
+	 *
+	 * @covers Automattic\Jetpack\Connection\Manager::disconnect_site_wpcom
+	 * @throws MockEnabledException PHPUnit wasn't able to enable mock functions.
+	 */
+	public function test_disconnect_site_wpcom() {
+		$this->update_option->enable();
+		$this->get_option->enable();
+		$this->apply_filters->enable();
+		$this->do_action->enable();
+
+		( new Plugin( 'plugin-slug-1' ) )->add( 'Plugin Name 1' );
+
+		( new Plugin( 'plugin-slug-2' ) )->add( 'Plugin Name 2' );
+
+		$stub = $this->createMock( Plugin::class );
+		$stub->method( 'is_only' )
+			->willReturn( false );
+		$manager = ( new Manager() )->set_plugin_instance( $stub );
+
+		$this->assertFalse( $manager->disconnect_site_wpcom() );
+	}
+
+	/**
+	 * Test the `jetpack_connection_custom_caps' method.
+	 *
+	 * @covers Automattic\Jetpack\Connection\Manager::jetpack_connection_custom_caps
+	 * @dataProvider jetpack_connection_custom_caps_data_provider
+	 *
+	 * @param bool   $in_dev_mode Whether development mode is active.
+	 * @param string $custom_cap The custom capability that is being tested.
+	 * @param array  $expected_caps The expected output.
+	 */
+	public function test_jetpack_connection_custom_caps( $in_dev_mode, $custom_cap, $expected_caps ) {
+		// Mock the site_url call in Status::is_development_mode.
+		$this->mock_function( 'site_url', false, 'Automattic\Jetpack' );
+
+		// Mock the apply_filters( 'jetpack_development_mode', ) call in Status::is_development_mode.
+		$this->mock_function( 'apply_filters', $in_dev_mode, 'Automattic\Jetpack' );
+
+		// Mock the apply_filters( 'jetpack_disconnect_cap', ) call in jetpack_connection_custom_caps.
+		$this->mock_function( 'apply_filters', array( 'manage_options' ) );
+
+		$caps = $this->manager->jetpack_connection_custom_caps( self::DEFAULT_TEST_CAPS, $custom_cap, 1, array() );
+		$this->assertEquals( $expected_caps, $caps );
+	}
+
+	/**
+	 * Data provider test_jetpack_connection_custom_caps.
+	 *
+	 * Structure of the test data arrays:
+	 *     [0] => 'in_dev_mode'   boolean Whether development mode is active.
+	 *     [1] => 'custom_cap'    string The custom capability that is being tested.
+	 *     [2] => 'expected_caps' array The expected output of the call to jetpack_connection_custom_caps.
+	 */
+	public function jetpack_connection_custom_caps_data_provider() {
+
+		return array(
+			'dev mode, jetpack_connect'          => array( true, 'jetpack_connect', array( 'do_not_allow' ) ),
+			'dev mode, jetpack_reconnect'        => array( true, 'jetpack_reconnect', array( 'do_not_allow' ) ),
+			'dev mode, jetpack_disconnect'       => array( true, 'jetpack_disconnect', array( 'manage_options' ) ),
+			'dev mode, jetpack_connect_user'     => array( true, 'jetpack_connect_user', array( 'do_not_allow' ) ),
+			'dev mode, unknown cap'              => array( true, 'unknown_cap', self::DEFAULT_TEST_CAPS ),
+			'not dev mode, jetpack_connect'      => array( false, 'jetpack_connect', array( 'manage_options' ) ),
+			'not dev mode, jetpack_reconnect'    => array( false, 'jetpack_reconnect', array( 'manage_options' ) ),
+			'not dev mode, jetpack_disconnect'   => array( false, 'jetpack_disconnect', array( 'manage_options' ) ),
+			'not dev mode, jetpack_connect_user' => array( false, 'jetpack_connect_user', array( 'read' ) ),
+			'not dev mode, unknown cap'          => array( false, 'unknown_cap', self::DEFAULT_TEST_CAPS ),
+		);
+	}
+
+	/**
 	 * Mock a global function and make it return a certain value.
 	 *
 	 * @param string $function_name Name of the function.
 	 * @param mixed  $return_value Return value of the function.
+	 * @param string $namespace The namespace of the function.
 	 *
 	 * @return Mock The mock object.
 	 * @throws MockEnabledException PHPUnit wasn't able to enable mock functions.
 	 */
-	protected function mock_function( $function_name, $return_value = null ) {
+	protected function mock_function( $function_name, $return_value = null, $namespace = __NAMESPACE__ ) {
 		$builder = new MockBuilder();
-		$builder->setNamespace( __NAMESPACE__ )
+		$builder->setNamespace( $namespace )
 			->setName( $function_name )
 			->setFunction(
 				function() use ( &$return_value ) {

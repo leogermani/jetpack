@@ -208,7 +208,6 @@ class SearchApp extends Component {
 		query = getSearchQuery(),
 		filter = getFilterQuery(),
 		sort = this.getSort(),
-		resultFormat = getResultFormatQuery(),
 		pageHandle,
 	} = {} ) => {
 		const requestId = this.state.requestId + 1;
@@ -220,7 +219,6 @@ class SearchApp extends Component {
 			filter,
 			pageHandle,
 			query,
-			resultFormat,
 			siteId: this.props.options.siteId,
 			sort,
 			postsPerPage: this.props.options.postsPerPage,
@@ -261,12 +259,14 @@ class SearchApp extends Component {
 				closeColor={ this.state.overlayOptions.closeColor }
 				closeOverlay={ this.hideResults }
 				colorTheme={ this.state.overlayOptions.colorTheme }
+				hasOverlayWidgets={ this.props.hasOverlayWidgets }
 				isVisible={ this.state.showResults }
 				opacity={ this.state.overlayOptions.opacity }
 			>
 				<SearchResults
 					closeOverlay={ this.hideResults }
 					enableLoadOnScroll={ this.state.overlayOptions.enableInfScroll }
+					enableSort={ this.state.overlayOptions.enableSort }
 					hasError={ this.state.hasError }
 					hasNextPage={ this.hasNextPage() }
 					highlightColor={ this.state.overlayOptions.highlightColor }
@@ -279,7 +279,7 @@ class SearchApp extends Component {
 					postTypes={ this.props.options.postTypes }
 					query={ getSearchQuery() }
 					response={ this.state.response }
-					resultFormat={ getResultFormatQuery() }
+					resultFormat={ this.state.overlayOptions.resultFormat }
 					showPoweredBy={ this.state.overlayOptions.showPoweredBy }
 					sort={ this.getSort() }
 					widgets={ this.props.options.widgets }
