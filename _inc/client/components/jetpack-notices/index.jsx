@@ -171,6 +171,8 @@ export class UserUnlinked extends React.Component {
 						) }
 						icon="my-sites"
 						className="is-jetpack-info"
+						from="unlinked-user-connect"
+						connectUser={ true }
 					/>
 				</div>
 			);
