@@ -12,6 +12,7 @@ import { StarIcon, StarBlockIcon } from './icon';
 import './editor.scss';
 import './style.scss';
 import { supportsCollections } from '../../shared/block-category';
+import { getCategoryWithFallbacks } from '../block-helpers';
 
 export const name = 'rating-star';
 
@@ -27,7 +28,7 @@ export const settings = {
 		_x( 'rating', 'block search term', 'jetpack' ),
 		_x( 'review', 'block search term', 'jetpack' ),
 	],
-	category: supportsCollections() ? 'formatting' : 'jetpack',
+	category: supportsCollections() ? getCategoryWithFallbacks( 'text', 'formatting' ) : 'jetpack',
 	example: {},
 	styles: [
 		{

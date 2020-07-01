@@ -13,6 +13,7 @@ import { isAtomicSite, isSimpleSite } from '../../shared/site-type-utils';
 import edit from './edit';
 import save from './save';
 import { supportsCollections } from '../../shared/block-category';
+import { getCategoryWithFallbacks } from '../block-helpers';
 
 export const name = 'markdown';
 
@@ -58,7 +59,7 @@ export const settings = {
 		</SVG>
 	),
 
-	category: supportsCollections() ? 'formatting' : 'jetpack',
+	category: supportsCollections() ? getCategoryWithFallbacks( 'text', 'formatting' ) : 'jetpack',
 
 	keywords: [
 		_x( 'formatting', 'block search term', 'jetpack' ),
