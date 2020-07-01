@@ -513,23 +513,9 @@ class WordAds {
 				break;
 		}
 
-		$ad_type = $this->option( 'wordads_house' ) ? 'house' : 'iponweb';
-		echo $this->get_ad( 'top', $ad_type ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		if ( ! self::is_amp() ) {
-			?>
-		<script type="text/javascript">
-			(function ( selector ) {
-				var main = document.querySelector( selector );
-				var headerAd = document.querySelector('.wpcnt-header');
-
-				if ( main ) {
-					main.parentNode.insertBefore( headerAd, main );
-				}
-			})( '<?php echo esc_js( $selector ); ?>' );
-
-		</script>
-			<?php
-		}
+		$section_id  = 0 === $this->params->blog_id ? WORDADS_API_TEST_ID : $this->params->blog_id . '2';
+		$form_factor = $this->params->mobile_device ? 'square' : 'leaderboard';
+		echo $this->get_dynamic_ad_snippet( $section_id, $form_factor, 'top', $selector ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
 	/**
@@ -579,16 +565,16 @@ class WordAds {
 	 */
 	public function get_ad( $spot, $type = 'iponweb' ) {
 		$snippet = '';
-		if ( 'iponweb' == $type ) {
+		if ( 'iponweb' === $type ) {
 			$section_id = WORDADS_API_TEST_ID;
 			$snippet    = '';
 
-			if ( 'top' == $spot ) {
-				// mrec for mobile, leaderboard for desktop
+			if ( 'top' === $spot ) {
+				// mrec for mobile, leaderboard for desktop.
 				$section_id  = 0 === $this->params->blog_id ? WORDADS_API_TEST_ID : $this->params->blog_id . '2';
 				$form_factor = $this->params->mobile_device ? 'square' : 'leaderboard';
 				$snippet     = $this->get_dynamic_ad_snippet( $section_id, $form_factor, $spot );
-			} elseif ( 'belowpost' == $spot ) {
+			} elseif ( 'belowpost' === $spot ) {
 				$section_id = 0 === $this->params->blog_id ? WORDADS_API_TEST_ID : $this->params->blog_id . '1';
 				$snippet    = $this->get_dynamic_ad_snippet( $section_id, 'square', $spot );
 			} elseif ( 'inline' === $spot ) {
@@ -615,8 +601,8 @@ class WordAds {
 	/**
 	 * Returns the AMP snippet to be inserted
 	 *
-	 * @param  int $height
-	 * @param  int $width
+	 * @param  int $height Height.
+	 * @param  int $width  Width.
 	 * @return string
 	 *
 	 * @since 8.7
@@ -649,6 +635,45 @@ HTML;
 	 * @since 5.7
 	 */
 	public function get_ad_snippet( $section_id, $height, $width, $location = '', $css = '' ) {
+		if ( function_exists( 'is_amp_endpoint' ) && is_amp_endpoint() ) {
+			return $this->get_amp_snippet( $height, $width );
+		}
+
+		$this->ads[] = array(
+			'location' => $location,
+			'width'    => $width,
+			'height'   => $height,
+		);
+
+		if ( 'gutenberg' === $location ) {
+			$ad_number = count( $this->ads ) . '-' . uniqid();
+			$data_tags = $this->params->cloudflare ? ' data-cfasync="false"' : '';
+			$css       = esc_attr( $css );
+
+			$loc_id = 100;
+			if ( ! empty( self::$ad_location_ids[ $location ] ) ) {
+				$loc_id = self::$ad_location_ids[ $location ];
+			}
+
+			return <<<HTML
+			<div style="padding-bottom:15px;width:{$width}px;height:{$height}px;$css">
+				<div id="atatags-{$ad_number}">
+					<script$data_tags type="text/javascript">
+					__ATA.cmd.push(function() {
+						__ATA.initSlot('atatags-{$ad_number}',  {
+							collapseEmpty: 'before',
+							sectionId: '{$section_id}',
+							location: {$loc_id},
+							width: {$width},
+							height: {$height}
+						});
+					});
+					</script>
+				</div>
+			</div>
+HTML;
+		}
+
 		$form_factor = 'square';
 		if ( 250 > $width ) {
 			$form_factor = 'skyscraper';
@@ -738,8 +763,8 @@ HTML;
 	 * @since 7.1
 	 */
 	public function get_ad_div( $spot, $snippet, array $css_classes = array() ) {
-		if ( strpos( strtolower( $spot ), 'amp' ) === false ) {
-			return $snippet; // we don't want dynamic ads to be inserted
+		if ( strpos( strtolower( $spot ), 'amp' ) === false && ! 'inline' === $spot ) {
+			return $snippet; // we don't want dynamic ads to be inserted for AMP & Gutenberg.
 		}
 
 		if ( empty( $css_classes ) ) {
