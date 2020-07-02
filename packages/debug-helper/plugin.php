@@ -8,7 +8,7 @@
  *
  * @package Jetpack.
  */
-// Test gh.
+// Test gh 2.
 namespace Automattic\Jetpack\Debug_Helper;
 
 define( 'JETPACK_DEBUG_HELPER_BASE_PLUGIN_FILE', __FILE__ );
